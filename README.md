@@ -42,6 +42,11 @@ java -jar target/aimessage-1.0.0.jar
 
 ### 生产环境部署
 
+查看详细部署指南：[DEPLOY.md](DEPLOY.md)
+
+**在线演示**: http://wangyurenpractice.xyz
+
+快速部署：
 ```bash
 # 使用生产配置文件
 java -jar target/aimessage-1.0.0.jar --spring.profiles.active=prod
