@@ -11,9 +11,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class SyncService {
@@ -61,19 +64,30 @@ public class SyncService {
     private int syncFromInsightScope() {
         int savedCount = 0;
         try {
+            log.info("Fetching data from InsightScope API...");
+            
             String response = webClient.get()
                     .uri("https://api.insightscope.org/report")
                     .retrieve()
-                    .onStatus(status -> status.isError(),
-                            clientResponse -> Mono.error(new RuntimeException("API Error")))
+                    .onStatus(
+                            status -> status.isError(),
+                            clientResponse -> clientResponse.bodyToMono(String.class)
+                                    .flatMap(errorBody -> Mono.error(new RuntimeException("API Error: " + errorBody)))
+                    )
                     .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(60))
                     .block();
 
-            if (response != null) {
+            if (response != null && !response.isEmpty()) {
+                log.info("Received response from API, length: {}", response.length());
                 savedCount = parseAndSaveNews(response);
+            } else {
+                log.warn("Empty response from API");
             }
+        } catch (WebClientResponseException e) {
+            log.error("HTTP Error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Error fetching from InsightScope", e);
+            log.error("Error fetching from InsightScope: {}", e.getMessage(), e);
         }
         return savedCount;
     }
@@ -82,8 +96,13 @@ public class SyncService {
         int count = 0;
         LocalDateTime now = LocalDateTime.now();
 
-        Category defaultCategory = categoryRepository.findByName("model")
-                .orElse(categoryRepository.findAll().get(0));
+        List<Category> categories = categoryRepository.findAll();
+        if (categories.isEmpty()) {
+            log.warn("No categories found, skipping sync");
+            return 0;
+        }
+        
+        Category defaultCategory = categories.get(0);
 
         String[] lines = content.split("\n");
         String currentCategory = "model";
@@ -115,13 +134,15 @@ public class SyncService {
 
                         newsRepository.save(news);
                         count++;
+                        log.debug("Saved news: {}", title);
                     }
                 } catch (Exception e) {
-                    log.warn("Error parsing line: {}", line);
+                    log.warn("Error parsing line: {}", line, e);
                 }
             }
         }
 
+        log.info("Parsed and saved {} news items", count);
         return count;
     }
 
