@@ -166,4 +166,28 @@ public class GitHubSyncService {
     public List<GitHubProject> getProjectsByLanguage(String language) {
         return gitHubProjectRepository.findByLanguageOrderByStarsDesc(language);
     }
+
+    /**
+     * 为现有项目生成中文描述
+     */
+    @Transactional
+    public int generateChineseDescriptionsForExistingProjects() {
+        log.info("Starting to generate Chinese descriptions for existing projects");
+        List<GitHubProject> projects = gitHubProjectRepository.findAll();
+        int updated = 0;
+
+        for (GitHubProject project : projects) {
+            if (project.getDescriptionZh() == null || project.getDescriptionZh().isEmpty()) {
+                String descriptionZh = descriptionService.generateChineseDescription(
+                    project.getName(), project.getDescription(), project.getLanguage());
+                project.setDescriptionZh(descriptionZh);
+                gitHubProjectRepository.save(project);
+                updated++;
+                log.info("Generated Chinese description for: {}", project.getName());
+            }
+        }
+
+        log.info("Completed generating Chinese descriptions. Updated {} projects", updated);
+        return updated;
+    }
 }

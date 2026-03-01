@@ -91,11 +91,19 @@ public class NewsController {
         return ResponseEntity.ok("Synced " + count + " GitHub projects");
     }
 
+    @PostMapping("/api/sync/github/generate-descriptions")
+    @ResponseBody
+    public ResponseEntity<String> generateChineseDescriptions() {
+        int count = gitHubSyncService.generateChineseDescriptionsForExistingProjects();
+        return ResponseEntity.ok("Generated Chinese descriptions for " + count + " projects");
+    }
+
     private GitHubProjectDTO convertToDTO(GitHubProject project) {
         GitHubProjectDTO dto = new GitHubProjectDTO();
         dto.setId(project.getId());
         dto.setName(project.getName());
         dto.setDescription(project.getDescription());
+        dto.setDescriptionZh(project.getDescriptionZh());
         dto.setUrl(project.getUrl());
         dto.setStars(project.getStars());
         dto.setForks(project.getForks());
