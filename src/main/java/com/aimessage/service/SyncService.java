@@ -17,6 +17,8 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class SyncService {
@@ -27,6 +29,9 @@ public class SyncService {
     private final CategoryRepository categoryRepository;
     private final SyncLogRepository syncLogRepository;
     private final WebClient webClient;
+
+    private static final Pattern TITLE_PATTERN = Pattern.compile("^####\\s+(.+)$");
+    private static final Pattern SOURCE_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^\\)]+)\\)");
 
     public SyncService(NewsRepository newsRepository, CategoryRepository categoryRepository,
                        SyncLogRepository syncLogRepository, WebClient webClient) {
@@ -106,38 +111,63 @@ public class SyncService {
 
         String[] lines = content.split("\n");
         String currentCategory = "model";
+        String pendingTitle = null;
+        int pendingImportance = 7;
 
-        for (String line : lines) {
-            line = line.trim();
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
 
             if (line.startsWith("### ")) {
                 currentCategory = detectCategory(line);
+                log.debug("Detected category: {}", currentCategory);
+                continue;
             }
 
-            if (line.startsWith("#### [") && line.contains("](")) {
-                try {
-                    String title = extractTitle(line);
-                    String url = extractUrl(line);
+            Matcher titleMatcher = TITLE_PATTERN.matcher(line);
+            if (titleMatcher.find()) {
+                pendingTitle = titleMatcher.group(1).trim();
+                
+                if (i + 1 < lines.length) {
+                    String nextLine = lines[i + 1].trim();
+                    if (nextLine.matches("\\d+/10")) {
+                        try {
+                            pendingImportance = Integer.parseInt(nextLine.split("/")[0]);
+                        } catch (Exception e) {
+                            pendingImportance = 7;
+                        }
+                    }
+                }
+                continue;
+            }
 
-                    if (title != null && url != null && !newsRepository.existsByUrl(url)) {
+            if (pendingTitle != null) {
+                Matcher sourceMatcher = SOURCE_PATTERN.matcher(line);
+                if (sourceMatcher.find()) {
+                    String sourceName = sourceMatcher.group(1);
+                    String url = sourceMatcher.group(2);
+
+                    if (!newsRepository.existsByUrl(url)) {
                         Category category = categoryRepository.findByName(currentCategory)
                                 .orElse(defaultCategory);
 
                         News news = new News();
-                        news.setTitle(title);
+                        news.setTitle(pendingTitle);
                         news.setContent("");
-                        news.setSource("InsightScope");
+                        news.setSource(sourceName);
                         news.setUrl(url);
                         news.setCategory(category);
-                        news.setImportance(7);
+                        news.setImportance(pendingImportance);
                         news.setSyncDate(now);
 
                         newsRepository.save(news);
                         count++;
-                        log.debug("Saved news: {}", title);
+                        log.info("Saved news [{}]: {}", currentCategory, pendingTitle);
+                    } else {
+                        log.debug("News already exists: {}", pendingTitle);
                     }
-                } catch (Exception e) {
-                    log.warn("Error parsing line: {}", line, e);
+                    
+                    pendingTitle = null;
+                    pendingImportance = 7;
                 }
             }
         }
@@ -157,23 +187,5 @@ public class SyncService {
         if (lower.contains("机器人") || lower.contains("具身")) return "robot";
         if (lower.contains("学术") || lower.contains("研究")) return "research";
         return "model";
-    }
-
-    private String extractTitle(String line) {
-        int start = line.indexOf("[") + 1;
-        int end = line.indexOf("]");
-        if (start > 0 && end > start) {
-            return line.substring(start, end);
-        }
-        return null;
-    }
-
-    private String extractUrl(String line) {
-        int start = line.indexOf("](") + 2;
-        int end = line.indexOf(")", start);
-        if (start > 1 && end > start) {
-            return line.substring(start, end);
-        }
-        return null;
     }
 }
