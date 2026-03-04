@@ -25,4 +25,10 @@ public interface NewsRepository extends JpaRepository<News, Long> {
     
     @Query("SELECT n FROM News n WHERE n.importance >= 8 ORDER BY n.syncDate DESC")
     List<News> findImportantNews();
+    
+    List<News> findBySyncDateBetween(LocalDateTime start, LocalDateTime end);
+    
+    List<News> findTop50ByOrderBySyncDateDesc();
+    
+    List<News> findTop1ByOrderBySyncDateDesc();
 }

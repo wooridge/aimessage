@@ -62,4 +62,14 @@ public class DailyReportDTO {
     public void setLastSyncTime(String lastSyncTime) {
         this.lastSyncTime = lastSyncTime;
     }
+    
+    private Map<String, Object> stats;
+    
+    public Map<String, Object> getStats() {
+        return stats;
+    }
+    
+    public void setStats(Map<String, Object> stats) {
+        this.stats = stats;
+    }
 }

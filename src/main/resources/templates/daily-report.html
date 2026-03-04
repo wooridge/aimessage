@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${report.title}">AI Daily Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
+        .card-hover { 
+            transition: all 0.3s ease; 
+        }
+        .card-hover:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1); 
+        }
+        .importance-high { 
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .importance-medium { 
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .importance-low { 
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .category-badge {
+            transition: all 0.2s ease;
+        }
+        .category-badge:hover {
+            transform: scale(1.05);
+        }
+        .source-tag {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            background: rgba(0,0,0,0.05);
+        }
+        .highlight-card {
+            border-left: 4px solid;
+            border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-center md:text-left">
+                    <div class="flex items-center justify-center md:justify-start gap-3 mb-2">
+                        <span class="text-4xl">🤖</span>
+                        <h1 class="text-3xl md:text-4xl font-bold">AI Daily</h1>
+                    </div>
+                    <p class="text-white/80 text-lg">多信源AI新闻聚合与智能分类</p>
+                </div>
+                <div class="flex flex-col items-center md:items-end gap-2">
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <p class="text-2xl font-semibold" th:text="${report.date}">2026-03-04</p>
+                    </div>
+                    <div class="flex gap-4 text-sm text-white/70">
+                        <span>📰 <span th:text="${report.totalNewsCount}">0</span> 条新闻</span>
+                        <span>🔄 <span th:text="${report.lastSyncTime}">未同步</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4 overflow-x-auto">
+                    <a href="/" class="text-gray-600 hover:text-blue-600 font-medium whitespace-nowrap">🏠 首页</a>
+                    <a href="/report" class="text-blue-600 font-medium whitespace-nowrap">📊 日报</a>
+                    <a href="/github" class="text-gray-600 hover:text-blue-600 font-medium whitespace-nowrap">🐙 GitHub</a>
+                    <a href="/sources" class="text-gray-600 hover:text-blue-600 font-medium whitespace-nowrap">📡 信源</a>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="triggerSync()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        同步
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Stats Overview -->
+        <section th:if="${report.stats != null}" class="mb-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-2xl font-bold text-blue-600" 
+                         th:text="${report.stats.importanceDistribution != null ? report.stats.importanceDistribution.high : 0}">0</div>
+                    <div class="text-sm text-gray-500">🔥 重要新闻</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-2xl font-bold text-purple-600" 
+                         th:text="${report.categorizedNews != null ? report.categorizedNews.size() : 0}">0</div>
+                    <div class="text-sm text-gray-500">📂 分类数量</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-2xl font-bold text-green-600" 
+                         th:text="${report.stats.sourceDistribution != null ? report.stats.sourceDistribution.size() : 0}">0</div>
+                    <div class="text-sm text-gray-500">📡 信源数量</div>
+                </div>
+                <div class="bg-white rounded-xl p-4 shadow-sm">
+                    <div class="text-2xl font-bold text-orange-600" th:text="${report.totalNewsCount}">0</div>
+                    <div class="text-sm text-gray-500">📰 总新闻数</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Highlights Section -->
+        <section th:if="${report.highlights != null && !report.highlights.isEmpty()}" class="mb-12 fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🔥</span>
+                    <h2 class="text-2xl font-bold text-gray-800">今日热点</h2>
+                    <span class="bg-red-100 text-red-600 text-sm px-3 py-1 rounded-full font-medium"
+                          th:text="${report.highlights.size()} + ' 条'">0 条</span>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div th:each="news : ${report.highlights}" 
+                     class="bg-white rounded-xl p-6 shadow-md card-hover highlight-card">
+                    <div class="flex items-start justify-between mb-4">
+                        <span th:class="'text-white text-xs px-3 py-1 rounded-full font-semibold ' + 
+                                       (${news.importance >= 9} ? 'importance-high' : 
+                                        ${news.importance >= 7} ? 'importance-medium' : 'importance-low')"
+                              th:text="'⭐ ' + ${news.importance} + '/10'">⭐ 9/10</span>
+                        <span class="source-tag text-gray-500" th:text="${news.source}">Source</span>
+                    </div>
+                    <h3 class="font-semibold text-gray-800 mb-3 line-clamp-3 text-lg leading-relaxed" 
+                        th:text="${news.title}">News Title</h3>
+                    <p th:if="${news.content != null && !news.content.isEmpty()}" 
+                       class="text-gray-500 text-sm mb-4 line-clamp-2" 
+                       th:text="${news.content}">Content preview...</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-400" th:text="${news.categoryDisplayName}">Category</span>
+                        <a th:href="${news.url}" target="_blank" 
+                           class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                            阅读全文
+                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories Section -->
+        <section th:each="entry : ${report.categorizedNews}" class="mb-10 fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl" th:text="${entry.value[0].categoryName == 'funding' ? '💰' : 
+                                                      entry.value[0].categoryName == 'policy' ? '🛡️' :
+                                                      entry.value[0].categoryName == 'model' ? '🚀' :
+                                                      entry.value[0].categoryName == 'agent' ? '🤖' :
+                                                      entry.value[0].categoryName == 'china' ? '🇨🇳' :
+                                                      entry.value[0].categoryName == 'chip' ? '🔧' :
+                                                      entry.value[0].categoryName == 'robot' ? '🔩' :
+                                                      entry.value[0].categoryName == 'research' ? '📄' :
+                                                      entry.value[0].categoryName == 'product' ? '🛠️' : '📰'}">📰</span>
+                    <h2 class="text-xl font-bold text-gray-800" th:text="${entry.key}">Category</h2>
+                    <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium" 
+                          th:text="${entry.value.size()} + ' 条'">0 条</span>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div th:each="news, iterStat : ${entry.value}" 
+                     th:class="${iterStat.last ? 'p-5 hover:bg-gray-50 transition-colors' : 'p-5 border-b border-gray-100 hover:bg-gray-50 transition-colors'}">
+                    <div class="flex items-start gap-4">
+                        <!-- Importance Score -->
+                        <div class="flex-shrink-0 text-center">
+                            <div th:class="'w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ' +
+                                           (${news.importance >= 8} ? 'importance-high' : 
+                                            ${news.importance >= 5} ? 'importance-medium' : 'importance-low')"
+                                 th:text="${news.importance}">7</div>
+                            <div class="text-xs text-gray-400 mt-1">评分</div>
+                        </div>
+                        
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                <span th:if="${news.importance >= 8}" 
+                                      class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded font-medium">🔥 重要</span>
+                                <span th:if="${news.importance >= 6 && news.importance < 8}" 
+                                      class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded font-medium">📌 关注</span>
+                                <span class="source-tag text-gray-500" th:text="${news.source}">Source</span>
+                                <span th:if="${news.publishDate != null}" 
+                                      class="text-xs text-gray-400"
+                                      th:text="${#temporals.format(news.publishDate, 'MM-dd HH:mm')}">Date</span>
+                            </div>
+                            <h3 class="font-medium text-gray-800 mb-2 text-lg leading-relaxed" 
+                                th:text="${news.title}">News Title</h3>
+                            <p th:if="${news.content != null && !news.content.isEmpty()}" 
+                               class="text-gray-500 text-sm mb-3 line-clamp-2" 
+                               th:text="${news.content}">Content preview...</p>
+                            <a th:href="${news.url}" target="_blank"
+                               class="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center font-medium">
+                                查看原文
+                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Empty State -->
+        <div th:if="${report.categorizedNews == null || report.categorizedNews.isEmpty()}" 
+             class="text-center py-16 fade-in">
+            <div class="text-6xl mb-4">📭</div>
+            <h3 class="text-xl font-semibold text-gray-600 mb-2">暂无新闻数据</h3>
+            <p class="text-gray-400 mb-6">点击下方按钮手动同步新闻</p>
+            <button onclick="triggerSync()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                🔄 立即同步
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-16 py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-gray-500 text-sm text-center md:text-left">
+                    <p class="font-medium">AI Daily - 多信源AI新闻聚合平台</p>
+                    <p class="text-xs mt-1">数据来源: ArXiv, OpenAI, Google, TechCrunch, 量子位等</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="/api/report/status" target="_blank"
+                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        📊 系统状态
+                    </a>
+                    <a href="/h2-console" target="_blank"
+                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        🗄️ 数据库
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <span id="toast-message">同步完成</span>
+    </div>
+
+    <script>
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            toastMessage.textContent = message;
+            
+            // 根据类型设置颜色
+            toast.className = 'fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-50';
+            if (type === 'success') {
+                toast.classList.add('bg-green-600', 'text-white');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-600', 'text-white');
+            } else {
+                toast.classList.add('bg-gray-800', 'text-white');
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        async function triggerSync() {
+            showToast('🔄 正在同步新闻，请稍候...', 'info');
+            try {
+                const response = await fetch('/api/report/sync', { method: 'POST' });
+                const result = await response.json();
+                if (result.status === 'SUCCESS') {
+                    showToast(`✅ 同步成功！共 ${result.count} 条新闻`, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showToast('❌ 同步失败: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showToast('❌ 同步出错: ' + error.message, 'error');
+            }
+        }
+
+        // 自动刷新（每5分钟）
+        setInterval(() => {
+            fetch('/api/report/today')
+                .then(response => response.json())
+                .then(data => {
+                    // 可以在这里更新页面数据而不刷新
+                    console.log('Report updated:', data);
+                })
+                .catch(error => console.error('Error fetching report:', error));
+        }, 300000);
+    </script>
+</body>
+</html>

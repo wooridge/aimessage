@@ -30,10 +30,8 @@ public class NewsController {
     }
 
     @GetMapping("/")
-    public String index(Model model) {
-        DailyReportDTO report = newsService.getDailyReport();
-        model.addAttribute("report", report);
-        return "index";
+    public String index() {
+        return "redirect:/report";
     }
 
     @GetMapping("/github")
