@@ -18,15 +18,17 @@ import java.util.stream.Collectors;
 
 @Service
 public class DailyReportService {
-    
+
     private static final Logger log = LoggerFactory.getLogger(DailyReportService.class);
-    
+
     private final NewsRepository newsRepository;
     private final CategoryRepository categoryRepository;
-    
-    public DailyReportService(NewsRepository newsRepository, CategoryRepository categoryRepository) {
+    private final TranslationService translationService;
+
+    public DailyReportService(NewsRepository newsRepository, CategoryRepository categoryRepository, TranslationService translationService) {
         this.newsRepository = newsRepository;
         this.categoryRepository = categoryRepository;
+        this.translationService = translationService;
     }
     
     @Transactional(readOnly = true)
@@ -189,8 +191,23 @@ public class DailyReportService {
     private NewsDTO convertToDTO(News news) {
         NewsDTO dto = new NewsDTO();
         dto.setId(news.getId());
-        dto.setTitle(news.getTitle());
-        dto.setContent(news.getContent());
+
+        // 翻译标题（如果是英文）
+        String title = news.getTitle();
+        if (title != null && !translationService.isChinese(title)) {
+            title = translationService.translateToChinese(title);
+        }
+        dto.setTitle(title);
+
+        // 翻译内容/摘要
+        String content = news.getContent();
+        if (content != null && !content.isEmpty() && !translationService.isChinese(content)) {
+            content = translationService.translateToChinese(content);
+        } else if (content == null || content.isEmpty()) {
+            content = generateSummary(title);
+        }
+        dto.setContent(content);
+
         dto.setSource(news.getSource());
         dto.setUrl(news.getUrl());
         dto.setCategoryName(news.getCategory() != null ? news.getCategory().getName() : "");
@@ -198,12 +215,7 @@ public class DailyReportService {
         dto.setImportance(news.getImportance());
         dto.setPublishDate(news.getPublishDate());
         dto.setSyncDate(news.getSyncDate());
-        
-        // 生成摘要（如果没有内容）
-        if (dto.getContent() == null || dto.getContent().isEmpty()) {
-            dto.setContent(generateSummary(news.getTitle()));
-        }
-        
+
         return dto;
     }
     

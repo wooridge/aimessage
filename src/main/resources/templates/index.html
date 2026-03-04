@@ -58,6 +58,32 @@
         .source-量子位 { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); }
         .source-infoq { background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); }
         .source-infoq-ai { background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); }
+
+        /* Tab 样式 */
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-btn:not(.active) {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        .tab-btn:not(.active):hover {
+            background: #e5e7eb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -89,87 +115,139 @@
     </header>
 
     <main class="container mx-auto px-4 py-8">
-        <!-- Highlights Section -->
-        <section th:if="${report.highlights != null && !report.highlights.isEmpty()}" class="mb-12">
-            <div class="flex items-center mb-6">
-                <span class="text-3xl mr-3">🔥</span>
-                <h2 class="text-2xl font-bold text-gray-800">今日热点</h2>
-            </div>
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div th:each="news : ${report.highlights}" 
-                     class="bg-white rounded-xl p-6 shadow-md card-hover border-l-4 border-red-500">
-                    <!-- 信源标签 -->
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="importance-badge text-white text-xs px-2 py-1 rounded-full font-semibold"
-                              th:text="'重要性 ' + ${news.importance} + '/10'">重要性 9/10</span>
-                        <!-- 动态信源标签 -->
-                        <span th:class="'source-tag source-' + ${#strings.toLowerCase(#strings.replace(news.source, ' ', '-'))}"
-                              th:text="${news.source}">Source</span>
-                    </div>
-                    <h3 class="font-semibold text-gray-800 mb-3 line-clamp-3" th:text="${news.title}">News Title</h3>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-400" th:if="${news.categoryDisplayName}" th:text="${news.categoryDisplayName}">分类</span>
-                        <a th:href="${news.url}" target="_blank" 
-                           class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
-                            阅读更多 
-                            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </a>
+        <!-- Tab 导航 -->
+        <div class="flex gap-2 mb-8">
+            <button class="tab-btn active" onclick="switchTab('all')">📰 全部新闻</button>
+            <button class="tab-btn" onclick="switchTab('highlights')">🔥 今日热点</button>
+            <button class="tab-btn" onclick="switchTab('byCategory')">📂 按分类</button>
+        </div>
+
+        <!-- 全部新闻 Tab -->
+        <div id="tab-all" class="tab-content active">
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div th:each="entry : ${report.categorizedNews}" th:remove="tag">
+                    <div th:each="news, iterStat : ${entry.value}" 
+                         th:class="${iterStat.last && entryStat.last} ? 'p-4 hover:bg-gray-50 transition-colors' : 'p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors'">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 pr-4">
+                                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                    <span th:if="${news.importance >= 8}" 
+                                          class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded font-medium">🔥 重要</span>
+                                    <span th:if="${news.importance >= 6 && news.importance < 8}" 
+                                          class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded font-medium">📌 关注</span>
+                                    <!-- 信源标签 -->
+                                    <span th:class="'source-tag source-' + ${#strings.toLowerCase(#strings.replace(news.source, ' ', '-'))}"
+                                          th:text="${news.source}">Source</span>
+                                    <span class="text-xs text-gray-400" th:if="${news.categoryDisplayName}" th:text="${news.categoryDisplayName}">分类</span>
+                                </div>
+                                <h3 class="font-medium text-gray-800 mb-2" th:text="${news.title}">News Title</h3>
+                                <p th:if="${news.content != null && !news.content.isEmpty()}" 
+                                   class="text-gray-500 text-sm mb-2 line-clamp-2" 
+                                   th:text="${news.content}">Content preview...</p>
+                                <a th:href="${news.url}" target="_blank"
+                                   class="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center">
+                                    查看原文
+                                    <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                    </svg>
+                                </a>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-gray-300" th:text="${news.importance}">7</div>
+                                <div class="text-xs text-gray-400">重要性</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Categories Section -->
-        <section th:each="entry : ${report.categorizedNews}" class="mb-10">
-            <div class="flex items-center mb-4">
-                <span class="category-icon mr-2" th:text="${entry.value[0].categoryName == 'funding' ? '💰' : 
-                                                              entry.value[0].categoryName == 'policy' ? '🛡️' :
-                                                              entry.value[0].categoryName == 'model' ? '🚀' :
-                                                              entry.value[0].categoryName == 'agent' ? '🤖' :
-                                                              entry.value[0].categoryName == 'china' ? '🇨🇳' :
-                                                              entry.value[0].categoryName == 'chip' ? '🔧' :
-                                                              entry.value[0].categoryName == 'robot' ? '🔩' :
-                                                              entry.value[0].categoryName == 'research' ? '📄' :
-                                                              entry.value[0].categoryName == 'product' ? '🛠️' : '📰'}">📰</span>
-                <h2 class="text-xl font-bold text-gray-800" th:text="${entry.key}">Category</h2>
-                <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full" 
-                      th:text="${entry.value.size()} + ' 条'">0 条</span>
-            </div>
-            
-            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div th:each="news, iterStat : ${entry.value}" 
-                     th:class="${iterStat.last ? 'p-4 hover:bg-gray-50 transition-colors' : 'p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors'}">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1 pr-4">
-                            <div class="flex items-center gap-2 mb-2 flex-wrap">
-                                <span th:if="${news.importance >= 8}" 
-                                      class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded font-medium">🔥 重要</span>
-                                <span th:if="${news.importance >= 6 && news.importance < 8}" 
-                                      class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded font-medium">📌 关注</span>
-                                <!-- 动态信源标签 -->
-                                <span th:class="'source-tag source-' + ${#strings.toLowerCase(#strings.replace(news.source, ' ', '-'))}"
-                                      th:text="${news.source}">Source</span>
-                            </div>
-                            <h3 class="font-medium text-gray-800 mb-2" th:text="${news.title}">News Title</h3>
-                            <a th:href="${news.url}" target="_blank"
-                               class="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center">
-                                查看原文
-                                <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+        <!-- Highlights Tab -->
+        <div id="tab-highlights" class="tab-content">
+            <section th:if="${report.highlights != null && !report.highlights.isEmpty()}" class="mb-12">
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div th:each="news : ${report.highlights}" 
+                         class="bg-white rounded-xl p-6 shadow-md card-hover border-l-4 border-red-500">
+                        <!-- 信源标签 -->
+                        <div class="flex items-start justify-between mb-3">
+                            <span class="importance-badge text-white text-xs px-2 py-1 rounded-full font-semibold"
+                                  th:text="'重要性 ' + ${news.importance} + '/10'">重要性 9/10</span>
+                            <span th:class="'source-tag source-' + ${#strings.toLowerCase(#strings.replace(news.source, ' ', '-'))}"
+                                  th:text="${news.source}">Source</span>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 mb-3 line-clamp-3" th:text="${news.title}">News Title</h3>
+                        <p th:if="${news.content != null && !news.content.isEmpty()}" 
+                           class="text-gray-500 text-sm mb-3 line-clamp-2" 
+                           th:text="${news.content}">Content preview...</p>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400" th:if="${news.categoryDisplayName}" th:text="${news.categoryDisplayName}">分类</span>
+                            <a th:href="${news.url}" target="_blank" 
+                               class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                阅读更多 
+                                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
                             </a>
                         </div>
-                        <div class="text-right">
-                            <div class="text-2xl font-bold text-gray-300" th:text="${news.importance}">7</div>
-                            <div class="text-xs text-gray-400">重要性</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 按分类 Tab -->
+        <div id="tab-byCategory" class="tab-content">
+            <section th:each="entry : ${report.categorizedNews}" class="mb-10">
+                <div class="flex items-center mb-4">
+                    <span class="category-icon mr-2" th:text="${entry.value[0].categoryName == 'funding' ? '💰' : 
+                                                                  entry.value[0].categoryName == 'policy' ? '🛡️' :
+                                                                  entry.value[0].categoryName == 'model' ? '🚀' :
+                                                                  entry.value[0].categoryName == 'agent' ? '🤖' :
+                                                                  entry.value[0].categoryName == 'china' ? '🇨🇳' :
+                                                                  entry.value[0].categoryName == 'chip' ? '🔧' :
+                                                                  entry.value[0].categoryName == 'robot' ? '🔩' :
+                                                                  entry.value[0].categoryName == 'research' ? '📄' :
+                                                                  entry.value[0].categoryName == 'product' ? '🛠️' : '📰'}">📰</span>
+                    <h2 class="text-xl font-bold text-gray-800" th:text="${entry.key}">Category</h2>
+                    <span class="ml-2 bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full" 
+                          th:text="${entry.value.size()} + ' 条'">0 条</span>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                    <div th:each="news, iterStat : ${entry.value}" 
+                         th:class="${iterStat.last ? 'p-4 hover:bg-gray-50 transition-colors' : 'p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors'}">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 pr-4">
+                                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                                    <span th:if="${news.importance >= 8}" 
+                                          class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded font-medium">🔥 重要</span>
+                                    <span th:if="${news.importance >= 6 && news.importance < 8}" 
+                                          class="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded font-medium">📌 关注</span>
+                                    <span th:class="'source-tag source-' + ${#strings.toLowerCase(#strings.replace(news.source, ' ', '-'))}"
+                                          th:text="${news.source}">Source</span>
+                                </div>
+                                <h3 class="font-medium text-gray-800 mb-2" th:text="${news.title}">News Title</h3>
+                                <p th:if="${news.content != null && !news.content.isEmpty()}" 
+                                   class="text-gray-500 text-sm mb-2 line-clamp-2" 
+                                   th:text="${news.content}">Content preview...</p>
+                                <a th:href="${news.url}" target="_blank"
+                                   class="text-blue-600 hover:text-blue-800 text-sm inline-flex items-center">
+                                    查看原文
+                                    <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                    </svg>
+                                </a>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-gray-300" th:text="${news.importance}">7</div>
+                                <div class="text-xs text-gray-400">重要性</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </div>
 
         <!-- Empty State -->
         <div th:if="${report.categorizedNews == null || report.categorizedNews.isEmpty()}" 
@@ -236,6 +314,22 @@
             } catch (error) {
                 showToast('同步出错: ' + error.message);
             }
+        }
+
+        function switchTab(tabName) {
+            // 隐藏所有 tab content
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            // 移除所有 tab button 的 active 状态
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // 显示选中的 tab
+            document.getElementById('tab-' + tabName).classList.add('active');
+            // 激活对应的 button
+            event.target.classList.add('active');
         }
     </script>
 </body>
